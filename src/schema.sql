@@ -1,6 +1,8 @@
 -- PostgreSQL production schema draft for Sowmy Kitchen.
 -- Apply through migrations in production and enable row-level security / app-layer RBAC.
 
+create extension if not exists pgcrypto;
+
 create type app_role as enum ('student', 'admin', 'driver');
 create type meal_period as enum ('Lunch', 'Dinner');
 create type meal_preference as enum ('Veg', 'Non-Veg');
@@ -202,6 +204,16 @@ create table audit_logs (
   ip_address inet,
   user_agent text,
   created_at timestamptz not null default now()
+);
+
+-- Idempotency record for signed third-party webhooks. Do not process an event twice.
+create table webhook_events (
+  id uuid primary key default gen_random_uuid(),
+  provider text not null,
+  event_id text not null,
+  payload jsonb not null,
+  received_at timestamptz not null default now(),
+  unique (provider, event_id)
 );
 
 create index orders_service_date_meal_idx on orders(service_date, meal, status);
