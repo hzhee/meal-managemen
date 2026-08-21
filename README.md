@@ -32,4 +32,6 @@ npm test
 
 ## Important production note
 
-Razorpay is now exposed through secure backend endpoints for order creation, signature verification, and signed webhooks. Add client-owned test credentials to `.env` before using them. Wallet credit occurs only after a server-side verification and an idempotent database transaction. WhatsApp remains an explicit mock/test adapter until official provider credentials are added.
+Razorpay is now exposed through secure backend endpoints for order creation, signature verification, and signed webhooks. Add client-owned test credentials to `.env` before using them. Wallet credit occurs only after a server-side verification and an idempotent database transaction.
+
+WhatsApp Cloud API is implemented as an official, template-based integration. Configure the `WHATSAPP_*` variables, create active rows in `whatsapp_templates`, then use `npm run notifications:dispatch` from a scheduler/worker. Messages are logged, retried up to three times, and delivery/read statuses are consumed through the signed WhatsApp webhook.

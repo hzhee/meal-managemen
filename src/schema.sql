@@ -172,7 +172,8 @@ create table notifications (
   sent_at timestamptz,
   failure_reason text,
   retry_count integer not null default 0,
-  idempotency_key text unique
+  idempotency_key text unique,
+  payload jsonb not null default '{}'
 );
 
 create table reviews (
