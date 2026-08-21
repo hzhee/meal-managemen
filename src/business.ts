@@ -108,9 +108,10 @@ export function generateOrdersForDate(args: {
   return { students, orders, transactions, notifications };
 }
 
-export function skipFutureMeal(args: { student: Student; date: string; meal: MealPeriod; reason?: string; orders: Order[] }) {
+export function skipFutureMeal(args: { student: Student; date: string; meal: MealPeriod; reason?: string; orders: Order[]; currentDate?: string }) {
   const existing = args.orders.find((order) => order.studentId === args.student.id && order.date === args.date && order.meal === args.meal);
-  if (args.date <= new Date().toISOString().slice(0, 10)) throw new Error("Meals can only be skipped before the service date.");
+  const currentDate = args.currentDate ?? new Date().toISOString().slice(0, 10);
+  if (args.date <= currentDate) throw new Error("Meals can only be skipped before the service date.");
   if (existing?.status === "DELIVERED" || existing?.status === "CANCELLED_HOLIDAY") throw new Error("This meal can no longer be skipped.");
   const skip: SkipDate = { id: makeId("skip"), studentId: args.student.id, date: args.date, meal: args.meal, reason: args.reason, createdAt: now() };
   let student = args.student;

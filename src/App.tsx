@@ -106,7 +106,7 @@ export function App() {
 
   function skipMeal(date: string, meal: "Lunch" | "Dinner") {
     try {
-      const result = skipFutureMeal({ student: selectedStudent, date, meal, reason: "Student requested skip", orders });
+      const result = skipFutureMeal({ student: selectedStudent, date, meal, reason: "Student requested skip", orders, currentDate: today });
       setSkips((records) => [result.skip, ...records]);
       setStudents((records) => records.map((student) => student.id === selectedStudent.id ? result.student : student));
       setOrders(result.orders);

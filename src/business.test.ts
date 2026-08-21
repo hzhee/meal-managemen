@@ -50,7 +50,7 @@ describe("Sowmy Kitchen business automation", () => {
       date: "2026-08-21", students: initialStudents, menus: initialMenus, holidays: [], existingOrders: [], lowBalanceThreshold: 200
     });
     const student = generated.students.find((record) => record.id === "stu-001")!;
-    const skipped = skipFutureMeal({ student, date: "2026-08-21", meal: "Lunch", orders: generated.orders });
+    const skipped = skipFutureMeal({ student, date: "2026-08-21", meal: "Lunch", orders: generated.orders, currentDate: "2026-08-20" });
 
     expect(skipped.orders.find((order) => order.studentId === student.id && order.meal === "Lunch")?.status).toBe("SKIPPED");
     expect(skipped.transactions[0]?.type).toBe("REFUND");
