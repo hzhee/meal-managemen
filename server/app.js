@@ -143,6 +143,18 @@ app.post("/api/admin/notifications/dispatch", requireAuth(["admin"]), async (_re
   try { res.json({ messages: await dispatchPendingWhatsApp() }); } catch (error) { next(error); }
 });
 
+app.get("/api/admin/students", requireAuth(["admin"]), async (_req, res, next) => {
+  try {
+    const { rows } = await pool.query(`select u.id, u.email, u.phone, s.full_name, s.college, s.hostel, s.room_number,
+      s.lunch_location, s.dinner_location, s.lunch_timing, s.dinner_timing, s.lunch_preference, s.dinner_preference,
+      coalesce(w.balance, 0) as wallet_balance,
+      count(o.id) filter (where o.status in ('CONFIRMED','DELIVERED')) as confirmed_orders
+      from users u join students s on s.user_id=u.id left join wallets w on w.student_id=u.id left join orders o on o.student_id=u.id
+      group by u.id, s.user_id, w.balance order by s.full_name`);
+    res.json({ students: rows });
+  } catch (error) { next(error); }
+});
+
 app.patch("/api/drivers/deliveries/:deliveryId/status", requireAuth(["driver"]), async (req, res, next) => {
   try {
     const { status } = z.object({ status: z.enum(["Assigned", "Preparing", "Ready", "Out for Delivery", "Delivered"]) }).parse(req.body);

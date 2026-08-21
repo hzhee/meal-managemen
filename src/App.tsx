@@ -491,7 +491,7 @@ function AdminDashboard(props: {
         <Panel title="Order control">
           <div className="list">
             {props.orders.slice(0, 6).map((order) => (
-              <Row key={order.id} title={`${order.id} · ${order.meal} · ${order.preference}`} detail={`${order.date} · ${order.status} · ${money(order.amount)} · ${order.location}`} />
+              <Row key={order.id} title={`${props.students.find((student) => student.id === order.studentId)?.fullName ?? order.studentId} · ${order.meal} · ${order.preference}`} detail={`${order.date} · ${order.status} · ${money(order.amount)} · ${order.location}`} />
             ))}
           </div>
         </Panel>
@@ -502,6 +502,21 @@ function AdminDashboard(props: {
           </div>
         </Panel>
       </div>
+      <Panel title="Student meal preferences & wallet details">
+        <div className="student-directory">
+          {props.students.map((student) => (
+            <article className="student-record" key={student.id}>
+              <div className="student-record-heading"><div><strong>{student.fullName}</strong><span>{student.college} · {student.hostel}, {student.roomNumber}</span></div><b>{money(student.walletBalance)}</b></div>
+              <div className="student-record-grid">
+                <span>Phone: {student.phone}</span><span>Email: {student.email}</span>
+                <span>Lunch: {student.preferences.Lunch} · {student.lunchTiming}</span><span>{student.lunchLocation}</span>
+                <span>Dinner: {student.preferences.Dinner} · {student.dinnerTiming}</span><span>{student.dinnerLocation}</span>
+                <span>Plan: {student.subscriptionPlan}</span><span>Orders: {props.orders.filter((order) => order.studentId === student.id).length}</span>
+              </div>
+            </article>
+          ))}
+        </div>
+      </Panel>
     </div>
   );
 }

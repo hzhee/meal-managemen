@@ -543,6 +543,11 @@ h3 {
 .assignment-row > div { display: grid; gap: 4px; }
 .assignment-row span { color: var(--muted); font-size: 13px; }
 .assignment-row select { min-height: 38px; max-width: 150px; padding: 0 8px; border: 1px solid var(--line); border-radius: 8px; background: #fffefa; color: var(--ink); font: inherit; font-size: 12px; }
+.student-directory { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.student-record { padding: 15px; border: 1px solid #e9e2d6; border-radius: 8px; background: #fffefa; }
+.student-record-heading { display: flex; justify-content: space-between; gap: 12px; align-items: start; padding-bottom: 10px; border-bottom: 1px solid #eee6db; }
+.student-record-heading div { display: grid; gap: 4px; }.student-record-heading span, .student-record-grid span { color: var(--muted); font-size: 12px; }.student-record-heading b { color: var(--green); white-space: nowrap; }
+.student-record-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; padding-top: 11px; }
 
 @media (max-width: 1100px) {
   .hero,
@@ -617,4 +622,5 @@ h3 {
   .full-span { grid-column: auto; }
   .assignment-row { align-items: stretch; flex-direction: column; }
   .assignment-row select { max-width: none; }
+  .student-directory, .student-record-grid { grid-template-columns: 1fr; }
 }
