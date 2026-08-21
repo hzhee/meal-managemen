@@ -11,6 +11,18 @@ npm install
 npm run dev -- --port 5173
 ```
 
+To run the secure API, create `.env` from `.env.example`, apply `src/schema.sql` to PostgreSQL, then run:
+
+```bash
+npm run server
+```
+
+The API listens on port `8787` by default. Create the first owner account with:
+
+```bash
+npm run seed:admin -- owner@example.com +919999999999 a-long-unique-password
+```
+
 ## Verify
 
 ```bash
@@ -20,4 +32,4 @@ npm test
 
 ## Important production note
 
-Razorpay and WhatsApp are currently explicit mock/test adapters. Before going live, connect client-owned credentials through a backend that verifies payments and enforces database-backed authentication and role permissions.
+Razorpay is now exposed through secure backend endpoints for order creation, signature verification, and signed webhooks. Add client-owned test credentials to `.env` before using them. Wallet credit occurs only after a server-side verification and an idempotent database transaction. WhatsApp remains an explicit mock/test adapter until official provider credentials are added.
