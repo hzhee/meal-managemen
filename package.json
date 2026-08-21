@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
+    "server": "node server/app.js",
+    "seed:admin": "node server/seed-admin.js",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run"
@@ -16,7 +18,17 @@
     "react": "latest",
     "react-dom": "latest",
     "lucide-react": "latest",
-    "clsx": "latest"
+    "clsx": "latest",
+    "bcryptjs": "latest",
+    "cors": "latest",
+    "dotenv": "latest",
+    "express": "latest",
+    "express-rate-limit": "latest",
+    "helmet": "latest",
+    "jsonwebtoken": "latest",
+    "pg": "latest",
+    "razorpay": "latest",
+    "zod": "latest"
   },
   "devDependencies": {
     "vitest": "latest",
