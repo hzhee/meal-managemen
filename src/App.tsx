@@ -1,4 +1,6 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { createUserWithEmailAndPassword, getIdTokenResult, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { doc, serverTimestamp, setDoc } from "firebase/firestore/lite";
 import {
   Bell,
   CalendarDays,
@@ -37,6 +39,7 @@ import {
 } from "./data";
 import { calculateFoodCounts, createWalletTransaction, generateOrdersForDate, publishHoliday, skipFutureMeal, updateDeliveryStatus } from "./business";
 import { verifyRazorpayPayment } from "./integrations";
+import { firebaseAuth, firebaseEnabled, firestore } from "./firebase";
 import type { Announcement, AuditLog, Delivery, DeliveryStatus, Holiday, MenuItem, NotificationRecord, Order, Role, SkipDate, Student, WalletTransaction } from "./types";
 
 const money = (amount: number) => `₹${amount.toLocaleString("en-IN")}`;
@@ -62,6 +65,17 @@ export function App() {
     lunch: calculateFoodCounts(orders, today, "Lunch"),
     dinner: calculateFoodCounts(orders, today, "Dinner")
   }), [orders]);
+
+  useEffect(() => {
+    if (!firebaseAuth) return;
+    return onAuthStateChanged(firebaseAuth, async (user) => {
+      if (!user) { setRole(null); return; }
+      const token = await getIdTokenResult(user, true);
+      const claim = token.claims.role;
+      if (claim === "admin" || claim === "driver" || claim === "student") setRole(claim);
+      else setToast("Your account is being prepared. Please sign in again in a moment.");
+    });
+  }, []);
 
   function rechargeWallet(amount: number) {
     void verifyRazorpayPayment({ mode: "mock", paymentId: `pay_${Date.now()}`, orderId: `rzp_${Date.now()}`, amount }).then((payment) => {
@@ -123,13 +137,16 @@ export function App() {
     setToast("Your meal profile was updated. New preferences apply to future automated orders.");
   }
 
-  function registerStudent(event: FormEvent<HTMLFormElement>) {
+  async function registerStudent(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const fullName = String(form.get("fullName") || "").trim();
     const phone = String(form.get("phone") || "").trim();
     const email = String(form.get("email") || "").trim();
+    const password = String(form.get("password") || "");
     if (!fullName || !phone || !email) { setToast("Please complete your name, phone number and email."); return; }
+    if (firebaseEnabled && (!firebaseAuth || !firestore)) { setToast("Firebase is not fully configured."); return; }
+    if (firebaseEnabled && password.length < 8) { setToast("Choose a password with at least 8 characters."); return; }
     const student: Student = {
       id: `stu-${Date.now()}`, fullName, phone, email,
       college: String(form.get("college") || "Saveetha"), hostel: String(form.get("hostel") || ""), roomNumber: String(form.get("room") || ""),
@@ -138,6 +155,13 @@ export function App() {
       preferences: { Lunch: String(form.get("lunchPreference") || "Veg") as "Veg" | "Non-Veg", Dinner: String(form.get("dinnerPreference") || "Veg") as "Veg" | "Non-Veg" },
       subscriptionPlan: String(form.get("plan") || "Weekly Flexible"), walletBalance: 0
     };
+    if (firebaseEnabled && firebaseAuth && firestore) {
+      try {
+        const credentials = await createUserWithEmailAndPassword(firebaseAuth, email, password);
+        await setDoc(doc(firestore, "students", credentials.user.uid), { ...student, id: credentials.user.uid, role: "student", createdAt: serverTimestamp() });
+        await setDoc(doc(firestore, "wallets", credentials.user.uid), { studentId: credentials.user.uid, balance: 0, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      } catch (error) { setToast(error instanceof Error ? error.message : "Could not create your account."); return; }
+    }
     setStudents((records) => [...records, student]);
     setShowRegister(false); setRole("student");
     setToast(`Welcome, ${student.fullName}. Your account is ready — recharge to activate your first meal.`);
@@ -210,7 +234,7 @@ export function App() {
           <span className="brand-mark">SK</span>
           <span>Sowmy Kitchen</span>
         </a>
-        {role ? <button className="header-join" onClick={() => { setRole(null); setToast("You have been logged out safely."); }}>Log out</button> : <><button className="header-join" onClick={() => setShowRegister(true)}><UserPlus size={16} /> Join now</button><button className="staff-link" onClick={() => setShowStaffAccess(true)}>Sign in</button></>}
+        {role ? <button className="header-join" onClick={() => { if (firebaseAuth) void signOut(firebaseAuth); setRole(null); setToast("You have been logged out safely."); }}>Log out</button> : <><button className="header-join" onClick={() => setShowRegister(true)}><UserPlus size={16} /> Join now</button><button className="staff-link" onClick={() => setShowStaffAccess(true)}>Sign in</button></>}
       </header>
 
       <main id="home">
@@ -277,7 +301,7 @@ export function App() {
         <MarketingSections />
       </main>
       {showRegister && <RegistrationDialog onClose={() => setShowRegister(false)} onSubmit={registerStudent} />}
-      {showStaffAccess && <StaffAccessDialog onClose={() => setShowStaffAccess(false)} onSelect={(selectedRole) => { setRole(selectedRole); setShowStaffAccess(false); setToast(`${selectedRole === "admin" ? "Owner" : selectedRole === "driver" ? "Driver" : "Student"} workspace opened in development mode.`); }} />}
+      {showStaffAccess && <StaffAccessDialog onClose={() => setShowStaffAccess(false)} onSelect={(selectedRole) => { setRole(selectedRole); setShowStaffAccess(false); setToast(`${selectedRole === "admin" ? "Owner" : selectedRole === "driver" ? "Driver" : "Student"} workspace opened.`); }} />}
     </div>
   );
 }
@@ -577,6 +601,7 @@ function RegistrationDialog(props: { onClose: () => void; onSubmit: (event: Form
           <label>Full name<input name="fullName" placeholder="Your name" required /></label>
           <label>Phone number<input name="phone" inputMode="tel" placeholder="+91 98765 43210" required /></label>
           <label>Email<input name="email" type="email" placeholder="you@college.edu" required /></label>
+          <label>Password<input name="password" type="password" placeholder="At least 8 characters" minLength={8} required={firebaseEnabled} /></label>
           <label>College<input name="college" placeholder="Saveetha / SIMATS" required /></label>
           <label>Hostel<input name="hostel" placeholder="Hostel name" required /></label>
           <label>Room number<input name="room" placeholder="B-214" required /></label>
@@ -596,11 +621,23 @@ function RegistrationDialog(props: { onClose: () => void; onSubmit: (event: Form
 
 function StaffAccessDialog(props: { onClose: () => void; onSelect: (role: Role) => void }) {
   const [error, setError] = useState("");
-  function signIn(event: FormEvent<HTMLFormElement>) {
+  async function signIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const email = String(form.get("email") || "").trim().toLowerCase();
     const password = String(form.get("password") || "");
+    if (firebaseEnabled) {
+      if (!firebaseAuth) { setError("Firebase Authentication is not configured."); return; }
+      try {
+        const credentials = await signInWithEmailAndPassword(firebaseAuth, email, password);
+        const token = await getIdTokenResult(credentials.user, true);
+        const role = token.claims.role;
+        if (role === "admin" || role === "driver" || role === "student") { props.onSelect(role); return; }
+        await signOut(firebaseAuth);
+        setError("Your account is not assigned a role yet. Please contact Sowmy Kitchen.");
+      } catch (error) { setError(error instanceof Error ? error.message : "Could not sign in."); }
+      return;
+    }
     if (password !== "sowmy-demo") { setError("Incorrect email or password."); return; }
     if (email === "student@sowmykitchen.test") { props.onSelect("student"); return; }
     if (email === "owner@sowmykitchen.test") { props.onSelect("admin"); return; }
@@ -618,7 +655,7 @@ function StaffAccessDialog(props: { onClose: () => void; onSelect: (role: Role) 
         <label className="staff-field">Password<input name="password" type="password" placeholder="Enter password" autoComplete="current-password" required /></label>
         {error && <p className="form-error" role="alert">{error}</p>}
         <button type="submit" className="wide"><ShieldCheck size={18} /> Sign in securely</button>
-        <div className="demo-credentials"><strong>Local demo only</strong><span>Student: student@sowmykitchen.test</span><span>Owner: owner@sowmykitchen.test</span><span>Driver: driver@sowmykitchen.test</span><span>Password: sowmy-demo</span></div>
+        {!firebaseEnabled && <div className="demo-credentials"><strong>Local demo only</strong><span>Student: student@sowmykitchen.test</span><span>Owner: owner@sowmykitchen.test</span><span>Driver: driver@sowmykitchen.test</span><span>Password: sowmy-demo</span></div>}
       </form>
     </div>
   );
