@@ -1,6 +1,6 @@
 # Sowmy Kitchen
 
-Production-shaped meal-management platform MVP for Sowmy Kitchen.
+Firebase-backed meal-management platform for Sowmy Kitchen.
 
 This implementation is intentionally more than a static restaurant website. It includes role-aware student, owner, and driver workspaces; meal preference and location management; wallet automation; holiday propagation; delivery assignment; and a production-ready PostgreSQL schema draft.
 
@@ -11,17 +11,22 @@ npm install
 npm run dev -- --port 5173
 ```
 
-To run the secure API, create `.env` from `.env.example`, apply `src/schema.sql` to PostgreSQL, then run:
+## Firebase setup
+
+This app uses Firebase Authentication, Firestore, and Cloud Functions. No physical server/database is needed.
+
+1. Create a Firebase project in the Firebase Console.
+2. Enable **Authentication → Email/Password** and create a **Firestore** database.
+3. Copy `.firebaserc.example` to `.firebaserc` and replace the project ID.
+4. Copy `.env.example` to `.env`, then add the Firebase Web App values.
+5. Sign in and deploy:
 
 ```bash
-npm run server
+npm run firebase:login
+npm run firebase:deploy
 ```
 
-The API listens on port `8787` by default. Create the first owner account with:
-
-```bash
-npm run seed:admin -- owner@example.com +919999999999 a-long-unique-password
-```
+Before deploying functions, set secrets interactively (they are not stored in Git): `npx firebase-tools functions:secrets:set INITIAL_OWNER_EMAIL`, then enter the owner email. Set Razorpay and WhatsApp secrets the same way when those accounts are ready.
 
 ## Verify
 
@@ -32,6 +37,6 @@ npm test
 
 ## Important production note
 
-Razorpay is now exposed through secure backend endpoints for order creation, signature verification, and signed webhooks. Add client-owned test credentials to `.env` before using them. Wallet credit occurs only after a server-side verification and an idempotent database transaction.
+Razorpay is exposed through Firebase Cloud Functions for secure order creation, signature verification, and signed webhooks. Wallet credit occurs only after a server-side verification and an idempotent Firestore transaction.
 
 WhatsApp Cloud API is implemented as an official, template-based integration. Configure the `WHATSAPP_*` variables, create active rows in `whatsapp_templates`, then use `npm run notifications:dispatch` from a scheduler/worker. Messages are logged, retried up to three times, and delivery/read statuses are consumed through the signed WhatsApp webhook.
