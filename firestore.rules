@@ -1,0 +1,43 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isAdmin() { return signedIn() && request.auth.token.role == 'admin'; }
+    function isDriver() { return signedIn() && request.auth.token.role == 'driver'; }
+    function owns(studentId) { return signedIn() && request.auth.uid == studentId; }
+
+    match /students/{studentId} {
+      allow read: if owns(studentId) || isAdmin();
+      allow create: if owns(studentId);
+      allow update: if (owns(studentId) && !('walletBalance' in request.resource.data.diff(resource.data).changedKeys())) || isAdmin();
+      allow delete: if false;
+    }
+
+    match /wallets/{studentId} {
+      allow read: if owns(studentId) || isAdmin();
+      allow write: if false; // Cloud Functions only
+    }
+
+    match /walletTransactions/{transactionId} {
+      allow read: if owns(resource.data.studentId) || isAdmin();
+      allow write: if false;
+    }
+
+    match /orders/{orderId} {
+      allow read: if owns(resource.data.studentId) || isAdmin() || (isDriver() && resource.data.driverId == request.auth.uid);
+      allow create, update, delete: if false; // Cloud Functions only
+    }
+
+    match /menus/{menuId} { allow read: if signedIn(); allow write: if isAdmin(); }
+    match /holidays/{holidayId} { allow read: if signedIn(); allow write: if isAdmin(); }
+    match /announcements/{announcementId} { allow read: if signedIn(); allow write: if isAdmin(); }
+    match /deliveries/{deliveryId} {
+      allow read: if isAdmin() || owns(resource.data.studentId) || (isDriver() && resource.data.driverId == request.auth.uid);
+      allow update: if isDriver() && resource.data.driverId == request.auth.uid && request.resource.data.diff(resource.data).changedKeys().hasOnly(['status', 'etaMinutes', 'updatedAt']);
+      allow create, delete: if isAdmin();
+    }
+    match /notifications/{notificationId} { allow read: if owns(resource.data.studentId) || isAdmin(); allow write: if false; }
+    match /whatsappTemplates/{templateId} { allow read, write: if isAdmin(); }
+    match /auditLogs/{logId} { allow read: if isAdmin(); allow write: if false; }
+  }
+}
